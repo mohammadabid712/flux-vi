@@ -22,8 +22,7 @@ export function DashboardHeader({ onNewProject, compact }: Props) {
       <View style={s.brand}>
         <Logo size={compact ? 34 : 40} />
         <View>
-          <Text style={[s.title, compact && { fontSize: 19 }]}>Veloce</Text>
-          <Text style={s.sub}>Video Studio</Text>
+          <Text style={[s.title, compact && { fontSize: 19 }]}>Flux VI</Text>
         </View>
         <View style={s.pro}>
           <Text style={s.proText}>PRO</Text>
@@ -66,7 +65,6 @@ const useStyles = makeStyles((c) => ({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 },
   title: { fontFamily: Fonts.bold, fontSize: 22, color: c.text, letterSpacing: -0.3 },
-  sub: { fontFamily: Fonts.medium, fontSize: 12.5, color: c.muted, marginTop: -2 },
   pro: { backgroundColor: c.primary, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginLeft: 2, alignSelf: "flex-start", marginTop: 4 },
   proText: { fontFamily: Fonts.bold, fontSize: 10.5, color: "#fff", letterSpacing: 0.6 },
   right: { flexDirection: "row", alignItems: "center", gap: 10 },

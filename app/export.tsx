@@ -150,8 +150,8 @@ export default function ExportScreen() {
   const mbps = preset === "custom" ? customMbps : BASE_MBPS[short][quality] * (fps === 60 ? 1.4 : fps === 24 ? 0.85 : 1);
   const duration = project?.duration ?? 0;
   const estBytes = ((mbps * 1_000_000 + 128_000) * duration) / 8;
-  const slug = (project?.title ?? "veloce-export").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
-  const fileName = `${slug || "veloce-export"}-${resolutionLabel(out.width, out.height).toLowerCase()}-${fps}fps.mp4`;
+  const slug = (project?.title ?? "flux-vi-export").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+  const fileName = `${slug || "flux-vi-export"}-${resolutionLabel(out.width, out.height).toLowerCase()}-${fps}fps.mp4`;
 
   const startRender = async () => {
     if (!project) return;

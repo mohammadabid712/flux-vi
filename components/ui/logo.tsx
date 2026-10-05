@@ -4,10 +4,10 @@ interface Props {
   size?: number;
 }
 
-/** Veloce brand mark: a kinetic playhead aperture. */
+/** Flux VI brand mark: a kinetic playhead aperture. */
 export function Logo({ size = 36 }: Props) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel="Veloce logo">
+    <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel="Flux VI logo">
       <Defs>
         <LinearGradient id="vg1" x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor="#3B82F6" />
