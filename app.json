@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "fastshot-app",
-    "slug": "fastshot-app",
+    "name": "Flux",
+    "slug": "flux",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -38,7 +38,8 @@
       "expo-font",
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

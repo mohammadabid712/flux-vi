@@ -1,24 +1,38 @@
 import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from "@expo-google-fonts/plus-jakarta-sans";
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
+} from "@expo-google-fonts/jetbrains-mono";
 
 // Font map passed to useFonts() in _layout.tsx
 export const FontMap = {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
 };
 
 // Semantic aliases used in styles throughout the app
 export const Fonts = {
-  regular: "Inter_400Regular",
-  medium: "Inter_500Medium",
-  semiBold: "Inter_600SemiBold",
-  bold: "Inter_700Bold",
+  regular: "PlusJakartaSans_400Regular",
+  medium: "PlusJakartaSans_500Medium",
+  semiBold: "PlusJakartaSans_600SemiBold",
+  bold: "PlusJakartaSans_700Bold",
+  extraBold: "PlusJakartaSans_800ExtraBold",
+  mono: "JetBrainsMono_400Regular",
+  monoMedium: "JetBrainsMono_500Medium",
+  monoBold: "JetBrainsMono_700Bold",
 } as const;
 
 export type FontWeight = keyof typeof Fonts;
