@@ -6,6 +6,7 @@ import { Fonts } from "@/constants/Typography";
 import { makeStyles } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import type { MediaAsset, Project } from "@/store/types";
+import { useSyncStore } from "@/store/sync-store";
 
 const BUDGET_MB = 2048; // local media cache budget
 
@@ -22,9 +23,12 @@ const formatMb = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : 
 interface Props {
   projects: Project[];
   userMedia: MediaAsset[];
+  /** Supabase storage used by the signed-in account; null in guest mode. */
+  cloudUsedBytes: number | null;
+  cloudQuotaBytes: number;
 }
 
-export function StorageCard({ projects, userMedia }: Props) {
+export function StorageCard({ projects, userMedia, cloudUsedBytes, cloudQuotaBytes }: Props) {
   const { theme, colors } = useTheme();
   const s = useStyles(theme);
 
@@ -40,13 +44,28 @@ export function StorageCard({ projects, userMedia }: Props) {
     let mediaMb = 0;
     for (const id of ids) mediaMb += parseMb(findMedia(id, userMedia)?.fileSize ?? "0 MB");
     const projectMb = JSON.stringify(projects).length / (1024 * 1024);
-    const used = mediaMb + projectMb;
-    return { used, pct: Math.min(100, Math.round((used / BUDGET_MB) * 100)), clips, assets: ids.size };
-  }, [projects, userMedia]);
+    const cloud = cloudUsedBytes !== null;
+    const used = cloud ? cloudUsedBytes / (1024 * 1024) + projectMb : mediaMb + projectMb;
+    const budget = cloud ? cloudQuotaBytes / (1024 * 1024) : BUDGET_MB;
+    return { used, budget, cloud, pct: Math.min(100, Math.round((used / budget) * 100)), clips, assets: ids.size };
+  }, [projects, userMedia, cloudUsedBytes, cloudQuotaBytes]);
 
   const r = 30;
   const circ = 2 * Math.PI * r;
-  const healthy = stats.pct < 85;
+  const syncStatus = useSyncStore((st) => st.status);
+  const syncBad = stats.cloud && syncStatus === "offline";
+  const healthy = stats.pct < 85 && !syncBad;
+  const healthText = syncBad
+    ? "Cloud unreachable — edits kept locally"
+    : stats.pct >= 85
+      ? stats.cloud
+        ? "Cloud quota almost full"
+        : "Cache almost full"
+      : stats.cloud
+        ? syncStatus === "saved"
+          ? "Sync healthy · all changes saved"
+          : "Sync healthy · saving changes"
+        : "All systems optimal";
 
   return (
     <View style={s.card}>
@@ -69,9 +88,11 @@ export function StorageCard({ projects, userMedia }: Props) {
           <Text style={s.pct}>{stats.pct}%</Text>
         </View>
         <View style={s.textCol}>
-          <Text style={s.title}>Storage & Performance</Text>
+          <Text style={s.title}>{stats.cloud ? "Cloud Storage & Health" : "Device Storage & Performance"}</Text>
           <Text style={s.sub}>
-            {formatMb(stats.used)} used of {formatMb(BUDGET_MB)}
+            {stats.cloud
+              ? `${formatMb(stats.used)} / ${formatMb(stats.budget)} used on Supabase`
+              : `${formatMb(stats.used)} used of ${formatMb(stats.budget)} local cache`}
           </Text>
         </View>
       </View>
@@ -80,7 +101,7 @@ export function StorageCard({ projects, userMedia }: Props) {
         <View style={s.statusRow}>
           <View style={[s.dot, { backgroundColor: healthy ? colors.green : colors.amber }]} />
           <Text style={[s.status, { color: healthy ? colors.green : colors.amber }]}>
-            {healthy ? "All systems optimal" : "Cache almost full"}
+            {healthText}
           </Text>
         </View>
         <Text style={s.sub}>

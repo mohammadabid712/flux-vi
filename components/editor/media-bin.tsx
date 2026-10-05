@@ -1,6 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { memo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { Artwork, LutPresets, SampleAudio, SampleMedia, TextPresets, TransitionPresets } from "@/constants/media";
@@ -9,9 +8,9 @@ import { makeStyles } from "@/constants/theme";
 import type { EditorActions, Notify } from "@/hooks/use-editor-actions";
 import { useTheme } from "@/hooks/use-theme";
 import { useEditorStore } from "@/store/editor-store";
+import { useMediaUpload } from "@/hooks/use-media-upload";
 import type { MediaAsset, Project } from "@/store/types";
-import { useAppStore } from "@/store/useAppStore";
-import { newId } from "@/utils/id";
+import { useAppStore, useVisibleMedia } from "@/store/useAppStore";
 import { isHovered } from "@/utils/pressable";
 import { toClock } from "@/utils/timecode";
 import { findClip } from "@/utils/timeline";
@@ -40,13 +39,25 @@ function SectionIcon({ icon, mci, color, size = 18 }: { icon: string; mci?: bool
 function MediaTile({ asset, onAdd }: { asset: MediaAsset; onAdd: (a: MediaAsset) => void }) {
   const { theme, colors } = useTheme();
   const s = useStyles(theme);
-  const src = asset.artwork ? Artwork[asset.artwork] : asset.url ? { uri: asset.url } : null;
+  const thumb = asset.type === "image" ? asset.url : asset.thumbnailUrl;
+  const src = asset.artwork ? Artwork[asset.artwork] : thumb ? { uri: thumb } : null;
   return (
     <Pressable onPress={() => onAdd(asset)} accessibilityRole="button" accessibilityLabel={`Add ${asset.name} to timeline`} style={s.tileWrap}>
       {({ pressed }) => (
         <View style={[s.tile, pressed && { opacity: 0.8 }]}>
           <View style={s.tileThumb}>
-            {src ? <Image source={src} style={s.fill} contentFit="cover" transition={120} /> : null}
+            {src ? (
+              <Image source={src} style={s.fill} contentFit="cover" transition={120} />
+            ) : (
+              <View style={s.tilePlaceholder}>
+                <Ionicons name={asset.type === "audio" ? "musical-notes" : "film"} size={22} color={asset.type === "audio" ? colors.green : colors.primary} />
+              </View>
+            )}
+            {asset.cloudId ? (
+              <View style={s.tileCloud}>
+                <Ionicons name="cloud-done" size={11} color={colors.cyan} />
+              </View>
+            ) : null}
             <View style={s.tileDur}>
               <Text style={s.tileDurText}>{asset.type === "image" ? "IMG" : toClock(asset.duration)}</Text>
             </View>
@@ -65,45 +76,13 @@ function MediaTile({ asset, onAdd }: { asset: MediaAsset; onAdd: (a: MediaAsset)
 function BinContent({ section, project, actions, notify }: { section: BinSection } & Omit<Props, "showRail">) {
   const { theme, colors } = useTheme();
   const s = useStyles(theme);
-  const userMedia = useAppStore((st) => st.userMedia);
-  const addUserMedia = useAppStore((st) => st.addUserMedia);
+  const userMedia = useVisibleMedia();
+  const signedIn = useAppStore((st) => st.activeOwnerId !== null);
   const selectedClipId = useEditorStore((st) => st.selectedClipId);
   const selected = selectedClipId ? findClip(project.tracks, selectedClipId)?.clip : undefined;
-  const [importing, setImporting] = useState(false);
 
-  const importPhoto = async () => {
-    setImporting(true);
-    try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        notify("Photo library permission is required to import", "error");
-        return;
-      }
-      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.6, base64: process.env.EXPO_OS === "web" });
-      if (res.canceled || !res.assets[0]) return;
-      const a = res.assets[0];
-      // On web, blob: URLs die on reload — keep a data URI when small enough to persist.
-      const persistable = a.base64 && a.base64.length < 1_500_000 ? `data:${a.mimeType ?? "image/jpeg"};base64,${a.base64}` : a.uri;
-      const asset: MediaAsset = {
-        id: `u-${newId()}`,
-        name: a.fileName?.replace(/\.[^.]+$/, "") || "Imported Photo",
-        type: "image",
-        url: persistable,
-        thumbnailUrl: persistable,
-        duration: 5,
-        resolution: `${a.width}x${a.height}`,
-        fileSize: a.fileSize ? `${(a.fileSize / (1024 * 1024)).toFixed(1)} MB` : "—",
-        category: "user_upload",
-      };
-      addUserMedia(asset);
-      notify(`Imported "${asset.name}"`, "success");
-    } catch (e) {
-      console.error("Import failed", e);
-      notify("Could not import that file", "error");
-    } finally {
-      setImporting(false);
-    }
-  };
+  const { phase, progressLabel, pickAndUpload } = useMediaUpload(project.id, notify);
+  const busy = phase !== "idle";
 
   switch (section) {
     case "media":
@@ -115,11 +94,19 @@ function BinContent({ section, project, actions, notify }: { section: BinSection
               <MediaTile key={m.id} asset={m} onAdd={actions.addAsset} />
             ))}
           </View>
-          <Text style={s.subhead}>Your Uploads</Text>
-          <Pressable onPress={importPhoto} disabled={importing} accessibilityRole="button" accessibilityLabel="Import photo from device">
+          <View style={s.uploadHead}>
+            <Text style={s.subhead}>Your Uploads</Text>
+            <View style={[s.scope, { borderColor: signedIn ? colors.cyan : colors.amber }]}>
+              <Ionicons name={signedIn ? "cloud-outline" : "phone-portrait-outline"} size={11} color={signedIn ? colors.cyan : colors.amber} />
+              <Text style={[s.scopeText, { color: signedIn ? colors.cyan : colors.amber }]}>{signedIn ? "Cloud" : "Device"}</Text>
+            </View>
+          </View>
+          <Pressable onPress={pickAndUpload} disabled={busy} accessibilityRole="button" accessibilityLabel={signedIn ? "Upload video, audio or image to cloud" : "Import video, audio or image"}>
             <View style={s.upload}>
-              {importing ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="cloud-upload-outline" size={18} color={colors.primary} />}
-              <Text style={s.uploadText}>{importing ? "Importing…" : "Import photo"}</Text>
+              {busy ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="cloud-upload-outline" size={18} color={colors.primary} />}
+              <Text style={s.uploadText} numberOfLines={1}>
+                {phase === "picking" ? "Choosing file…" : phase === "uploading" ? progressLabel ?? "Uploading…" : signedIn ? "Upload to Cloud" : "Import Media"}
+              </Text>
             </View>
           </Pressable>
           {userMedia.length > 0 ? (
@@ -129,7 +116,11 @@ function BinContent({ section, project, actions, notify }: { section: BinSection
               ))}
             </View>
           ) : (
-            <Text style={s.hint}>Imported stills land here. Tap any tile to append it to the selected track.</Text>
+            <Text style={s.hint}>
+              {signedIn
+                ? "Videos, audio and stills (up to 50 MB) upload to your private project-media folder and stream on every device."
+                : "Imports stay on this device. Sign in to upload media to Supabase cloud storage."}
+            </Text>
           )}
         </View>
       );
@@ -317,6 +308,11 @@ const useStyles = makeStyles((c) => ({
   tileMeta: { fontFamily: Fonts.mono, fontSize: 9.5 },
   upload: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 40, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", borderColor: c.primary, backgroundColor: c.primarySoft },
   uploadText: { fontFamily: Fonts.semiBold, fontSize: 12.5, color: c.text },
+  tilePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: c.hover },
+  tileCloud: { position: "absolute", left: 4, top: 4, backgroundColor: "rgba(0,0,0,0.65)", borderRadius: 6, paddingHorizontal: 4, paddingVertical: 2 },
+  uploadHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  scope: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, height: 20 },
+  scopeText: { fontFamily: Fonts.semiBold, fontSize: 10 },
   hint: { fontFamily: Fonts.regular, fontSize: 11.5, color: c.subtle, lineHeight: 16 },
   groupBlock: { gap: 6 },
   row: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 8, minHeight: 44, borderRadius: 8, backgroundColor: c.panel, borderWidth: 1, borderColor: "transparent" },

@@ -73,6 +73,7 @@ function project(
     coverArt: cover,
     createdAt: new Date(Date.now() - (hoursAgo + 48) * 3600 * 1000).toISOString(),
     updatedAt: updated,
+    sampleUpdatedAt: updated,
   };
 }
 

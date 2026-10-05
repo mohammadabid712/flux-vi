@@ -43,7 +43,7 @@ async function loadSources(project: Project, userMedia: MediaAsset[]): Promise<M
       const m = findMedia(id, userMedia);
       if (!m) return;
       try {
-        const uri = m.artwork ? Asset.fromModule(Artwork[m.artwork] as number).uri : m.url;
+        const uri = m.artwork ? Asset.fromModule(Artwork[m.artwork] as number).uri : m.type === "image" ? m.url : m.thumbnailUrl;
         if (uri) out.set(id, await loadBitmap(uri));
       } catch (e) {
         console.error("Could not load media for render", id, e);

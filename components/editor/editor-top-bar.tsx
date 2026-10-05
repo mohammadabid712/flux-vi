@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { ModalPanel } from "@/components/ui/modal-panel";
 import { Slider } from "@/components/ui/slider";
+import { AccountButton } from "@/components/cloud/account-button";
+import { CloudBadge } from "@/components/cloud/cloud-badge";
 
 interface Props {
   project: Project;
@@ -22,6 +24,7 @@ interface Props {
   onShortcuts: () => void;
   onRename: (title: string) => void;
   onFormat: (ar: AspectRatio) => void;
+  onAccount: () => void;
 }
 
 function BarIcon({ icon, label, onPress, disabled, active, mci }: { icon: string; label: string; onPress: () => void; disabled?: boolean; active?: boolean; mci?: boolean }) {
@@ -37,7 +40,7 @@ function BarIcon({ icon, label, onPress, disabled, active, mci }: { icon: string
   );
 }
 
-export function EditorTopBar({ project, actions, compact, onBack, onExport, onShortcuts, onRename, onFormat }: Props) {
+export function EditorTopBar({ project, actions, compact, onBack, onExport, onShortcuts, onRename, onFormat, onAccount }: Props) {
   const { theme, colors } = useTheme();
   const s = useStyles(theme);
   const snap = useEditorStore((st) => st.snap);
@@ -108,10 +111,13 @@ export function EditorTopBar({ project, actions, compact, onBack, onExport, onSh
           </View>
         </Pressable>
         {!compact ? <View style={s.controls}>{controls}</View> : null}
+        {!compact ? <CloudBadge onPress={onAccount} /> : null}
+        <AccountButton showLabel={false} />
         <Button label="Export" icon="rocket" onPress={onExport} size={compact ? "md" : "lg"} />
       </View>
       {compact ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.compactScroll} contentContainerStyle={s.compactControls}>
+          <CloudBadge compact onPress={onAccount} />
           {controls}
         </ScrollView>
       ) : null}

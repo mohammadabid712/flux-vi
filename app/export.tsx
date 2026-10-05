@@ -17,7 +17,9 @@ import { Fonts } from "@/constants/Typography";
 import { makeStyles } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import type { AspectRatio } from "@/store/types";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, useProject, useVisibleMedia } from "@/store/useAppStore";
+import { errorMessage, recordExport } from "@/services/cloud";
+import { currentUserId, flushSync } from "@/services/sync-engine";
 import { canEncodeFile, downloadRender, releaseRender, renderProject, shareRender } from "@/utils/render-engine";
 import { RenderCancelled, type RenderProgress, type RenderResult, evenDim } from "@/utils/render-types";
 import { toClock } from "@/utils/timecode";
@@ -109,8 +111,8 @@ export default function ExportScreen() {
   const { theme, colors } = useTheme();
   const s = useStyles(theme);
   const hydrated = useAppStore((st) => st.hasHydrated);
-  const project = useAppStore((st) => st.projects.find((p) => p.id === params.id));
-  const userMedia = useAppStore((st) => st.userMedia);
+  const project = useProject(params.id);
+  const userMedia = useVisibleMedia();
   const { toastNode, showToast } = useToast();
 
   const initialPreset: Preset = project?.aspectRatio === "9:16" ? "tiktok" : project?.aspectRatio === "1:1" ? "instagram" : "youtube";
@@ -169,6 +171,7 @@ export default function ExportScreen() {
       const res = await renderProject(project, userMedia, { width: out.width, height: out.height, fps, bitrate: Math.round(mbps * 1_000_000), fileName }, setProgress, signal.current);
       setResult(res);
       setPhase("done");
+      void logExport(res);
     } catch (e) {
       console.error("Render failed", e);
       if (e instanceof RenderCancelled) {
@@ -179,6 +182,31 @@ export default function ExportScreen() {
       }
       setError(e instanceof Error ? e.message : "Unknown render error");
       setPhase("error");
+    }
+  };
+
+  /** Saves an export record to Supabase for signed-in creators (after syncing the project row). */
+  const logExport = async (res: RenderResult) => {
+    if (!project?.ownerId || !currentUserId()) return;
+    try {
+      const synced = await flushSync();
+      if (!synced) {
+        showToast("Rendered — export history will be saved once the cloud is reachable", "info");
+        return;
+      }
+      await recordExport({
+        projectId: project.id,
+        preset: `${preset}-${resolutionLabel(res.width, res.height)}`,
+        width: res.width,
+        height: res.height,
+        fps: res.fps,
+        fileName: res.fileName,
+        sizeBytes: res.sizeBytes,
+      });
+      showToast("Render complete · export saved to your cloud history", "success");
+    } catch (e) {
+      console.error("Could not record export", e);
+      showToast(errorMessage(e, "Could not save export record"), "error");
     }
   };
 

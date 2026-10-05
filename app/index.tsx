@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
@@ -8,6 +8,9 @@ import { NewProjectModal } from "@/components/dashboard/new-project-modal";
 import { PresetCard } from "@/components/dashboard/preset-card";
 import { ProjectCard } from "@/components/dashboard/project-card";
 import { StorageCard } from "@/components/dashboard/storage-card";
+import { SyncStrip } from "@/components/dashboard/sync-strip";
+import { useSyncStore } from "@/store/sync-store";
+import { STORAGE_QUOTA_BYTES } from "@/lib/supabase";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LoadingState, MessageState } from "@/components/ui/state-views";
 import { useToast } from "@/components/ui/toast";
@@ -15,7 +18,7 @@ import { type QuickPreset, QuickPresets } from "@/constants/presets";
 import { Fonts } from "@/constants/Typography";
 import { makeStyles } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-import { type NewProjectInput, useAppStore } from "@/store/useAppStore";
+import { type NewProjectInput, useAppStore, useVisibleMedia, useVisibleProjects } from "@/store/useAppStore";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -24,14 +27,25 @@ export default function Dashboard() {
   const { theme, colors } = useTheme();
   const s = useStyles(theme);
   const hydrated = useAppStore((st) => st.hasHydrated);
-  const projects = useAppStore((st) => st.projects);
-  const userMedia = useAppStore((st) => st.userMedia);
+  const projects = useVisibleProjects();
+  const userMedia = useVisibleMedia();
   const view = useAppStore((st) => st.preferences.projectView);
   const setPreference = useAppStore((st) => st.setPreference);
   const createProject = useAppStore((st) => st.createProject);
   const duplicateProject = useAppStore((st) => st.duplicateProject);
   const deleteProject = useAppStore((st) => st.deleteProject);
   const { toastNode, showToast } = useToast();
+  const authReady = useSyncStore((st) => st.authReady);
+  const notice = useSyncStore((st) => st.notice);
+  const cloudVersions = useAppStore((st) => st.cloudVersions);
+  const signedIn = useAppStore((st) => st.activeOwnerId !== null);
+  const profile = useSyncStore((st) => st.profile);
+
+  useEffect(() => {
+    if (!notice) return;
+    showToast(notice, "success");
+    useSyncStore.getState().set({ notice: null });
+  }, [notice, showToast]);
 
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -93,7 +107,7 @@ export default function Dashboard() {
     showToast(`Deleted "${title}"`, "success");
   }, [pendingDelete, projects, deleteProject, showToast]);
 
-  if (!hydrated) return <LoadingState label="Restoring your projects…" />;
+  if (!hydrated || !authReady) return <LoadingState label="Restoring your projects…" />;
 
   return (
     <View style={s.root}>
@@ -103,6 +117,7 @@ export default function Dashboard() {
       >
         <View style={s.inner}>
           <DashboardHeader onNewProject={() => openNew(null)} compact={compact} />
+          <SyncStrip notify={showToast} />
 
           <View style={s.search}>
             <Ionicons name="search-outline" size={19} color={colors.muted} />
@@ -141,7 +156,7 @@ export default function Dashboard() {
           )}
 
           <View style={s.recentHeader}>
-            <Text style={s.h2}>Recent Projects</Text>
+            <Text style={s.h2}>{signedIn ? "Your Cloud Projects" : "Local Drafts"}</Text>
             <View style={s.viewToggle} accessibilityRole="radiogroup" accessibilityLabel="Project layout">
               {(["grid", "list"] as const).map((v) => (
                 <Pressable
@@ -179,6 +194,7 @@ export default function Dashboard() {
                     <ProjectCard
                       key={p.id}
                       project={p}
+                      syncState={!signedIn ? "local" : cloudVersions[p.id] === p.updatedAt ? "synced" : "pending"}
                       layout={view === "list" ? "list" : "grid"}
                       onEdit={handleEdit}
                       onDuplicate={handleDuplicate}
@@ -191,7 +207,12 @@ export default function Dashboard() {
             </View>
           )}
 
-          <StorageCard projects={projects} userMedia={userMedia} />
+          <StorageCard
+            projects={projects}
+            userMedia={userMedia}
+            cloudUsedBytes={signedIn ? (profile?.storageUsedBytes ?? 0) : null}
+            cloudQuotaBytes={STORAGE_QUOTA_BYTES}
+          />
         </View>
       </ScrollView>
 
@@ -199,7 +220,7 @@ export default function Dashboard() {
       <ConfirmDialog
         visible={!!pendingDelete}
         title="Delete project?"
-        message={`"${projects.find((p) => p.id === pendingDelete)?.title ?? ""}" and its timeline will be permanently removed from this device.`}
+        message={`"${projects.find((p) => p.id === pendingDelete)?.title ?? ""}" and its timeline will be permanently removed${signedIn ? " from this device and your cloud account" : " from this device"}.`}
         confirmLabel="Delete"
         destructive
         onConfirm={confirmDelete}

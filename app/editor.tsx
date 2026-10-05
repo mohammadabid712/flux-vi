@@ -17,7 +17,7 @@ import { usePlayback } from "@/hooks/use-playback";
 import { useTheme } from "@/hooks/use-theme";
 import { useEditorStore } from "@/store/editor-store";
 import type { AspectRatio } from "@/store/types";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, useVisibleMedia, useVisibleProjects } from "@/store/useAppStore";
 
 const WIDE = 1000;
 
@@ -29,8 +29,8 @@ export default function EditorScreen() {
   const { theme } = useTheme();
   const s = useStyles(theme);
   const hydrated = useAppStore((st) => st.hasHydrated);
-  const projects = useAppStore((st) => st.projects);
-  const userMedia = useAppStore((st) => st.userMedia);
+  const projects = useVisibleProjects();
+  const userMedia = useVisibleMedia();
   const rippleDefault = useAppStore((st) => st.settings.rippleDefault);
   const renameProject = useAppStore((st) => st.renameProject);
   const setProjectFormat = useAppStore((st) => st.setProjectFormat);
@@ -235,6 +235,7 @@ export default function EditorScreen() {
       onShortcuts={() => router.push("/shortcuts")}
       onRename={onRename}
       onFormat={onFormat}
+      onAccount={() => router.push("/auth")}
     />
   );
 

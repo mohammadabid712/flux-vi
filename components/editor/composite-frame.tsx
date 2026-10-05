@@ -24,7 +24,8 @@ export function sourceFor(mediaId: string, userMedia: MediaAsset[]): ImageSource
   const m = findMedia(mediaId, userMedia);
   if (!m) return null;
   if (m.artwork) return Artwork[m.artwork];
-  if (m.url) return { uri: m.url };
+  if (m.type === "image" && m.url) return { uri: m.url };
+  if (m.thumbnailUrl) return { uri: m.thumbnailUrl };
   return null;
 }
 

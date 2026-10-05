@@ -100,6 +100,10 @@ export interface Project {
   coverArt: ArtworkKey;
   createdAt: string;
   updatedAt: string;
+  /** Supabase user that owns this project; null/undefined = guest local draft. */
+  ownerId?: string | null;
+  /** Set on bundled sample projects; equals updatedAt while the sample is untouched. */
+  sampleUpdatedAt?: string;
 }
 
 export type ArtworkKey = "city" | "lake" | "cyber" | "camera" | "laptop" | "mic" | "hiker";
@@ -116,6 +120,23 @@ export interface MediaAsset {
   fileSize: string;
   category: "sample" | "stock" | "user_upload";
   group?: "music" | "sfx" | "voice";
+  /** Owner of an uploaded asset; undefined = guest import on this device. */
+  ownerId?: string | null;
+  /** media_assets row id when the file lives in Supabase Storage. */
+  cloudId?: string;
+  storagePath?: string;
+  sizeBytes?: number;
+}
+
+export type SyncStatus = "local" | "pending" | "syncing" | "saved" | "offline";
+
+export interface Profile {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  storageUsedBytes: number;
+  createdAt: string;
 }
 
 export interface EditorSettings {

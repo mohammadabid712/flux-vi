@@ -44,11 +44,11 @@ const shared = {
 export const Palettes: Record<ThemeName, Palette> = {
   dark: {
     ...shared,
-    bg: "#0D0F12",
-    surface: "#16191F",
-    panel: "#1D212A",
-    hover: "#272C38",
-    border: "#2A303C",
+    bg: "#090A0F",
+    surface: "#12141F",
+    panel: "#181B29",
+    hover: "#232842",
+    border: "#1E2235",
     text: "#F8FAFC",
     muted: "#94A3B8",
     subtle: "#64748B",
